@@ -1,0 +1,10 @@
+.DS_Store
+.claude/
+.vscode/
+
+firmware/build/
+firmware/managed_components/
+firmware/sdkconfig.old
+
+dashboard/node_modules/
+dashboard/dist/

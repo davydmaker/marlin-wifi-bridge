@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>Marlin WiFi Bridge Dashboard</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <header id="header">
+      <div class="header-left">
+        <h1>Marlin WiFi Bridge</h1>
+        <span id="connection-badge" class="badge badge-disconnected">DISCONNECTED</span>
+      </div>
+      <div class="header-right">
+        <input type="text" id="esp-ip" placeholder="192.168.1.50" />
+        <button id="btn-connect">Connect</button>
+      </div>
+    </header>
+
+    <main id="app">
+      <section id="tab-monitor" class="tab-content active">
+        <div class="card card-thermal">
+          <div class="thermal-grid">
+            <div class="gauge-container">
+              <canvas id="gauge-hotend" width="160" height="160"></canvas>
+              <div class="gauge-label">
+                <span class="gauge-value" id="hotend-temp">--</span>
+                <span class="gauge-target">/ <span id="hotend-target">--</span>&deg;C</span>
+                <span class="gauge-name">Hotend</span>
+              </div>
+            </div>
+            <div class="gauge-container">
+              <canvas id="gauge-bed" width="160" height="160"></canvas>
+              <div class="gauge-label">
+                <span class="gauge-value" id="bed-temp">--</span>
+                <span class="gauge-target">/ <span id="bed-target">--</span>&deg;C</span>
+                <span class="gauge-name">Bed</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card card-print">
+          <div class="print-header">
+            <span id="print-state" class="print-state-badge">IDLE</span>
+            <span id="print-pct" class="print-pct">0%</span>
+          </div>
+          <div id="print-filename" class="print-filename"></div>
+          <div class="progress-bar-container">
+            <div class="progress-bar" id="print-progress" style="width: 0%"></div>
+          </div>
+          <div class="print-details">
+            <span id="print-bytes">0 / 0 bytes</span>
+          </div>
+        </div>
+
+        <div class="card card-position">
+          <div class="card-title"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg> Position</div>
+          <div class="pos-grid">
+            <div class="pos-axis"><span class="axis-label">X</span><span class="axis-value" id="pos-x">--</span><span class="axis-unit">mm</span></div>
+            <div class="pos-axis"><span class="axis-label">Y</span><span class="axis-value" id="pos-y">--</span><span class="axis-unit">mm</span></div>
+            <div class="pos-axis"><span class="axis-label">Z</span><span class="axis-value" id="pos-z">--</span><span class="axis-unit">mm</span></div>
+            <div class="pos-axis"><span class="axis-label">E</span><span class="axis-value" id="pos-e">--</span><span class="axis-unit">mm</span></div>
+          </div>
+        </div>
+
+        <div class="card card-overrides">
+          <div class="card-title"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg> Overrides</div>
+          <div class="override-grid">
+            <div class="override-item">
+              <span class="override-label">Speed</span>
+              <span class="override-value" id="mon-speed">100%</span>
+            </div>
+            <div class="override-item">
+              <span class="override-label">Flow</span>
+              <span class="override-value" id="mon-flow">100%</span>
+            </div>
+            <div class="override-item">
+              <span class="override-label">Fan</span>
+              <span class="override-value" id="mon-fan">0%</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card card-chart">
+          <div class="card-title"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Temperature History</div>
+          <canvas id="temp-chart" height="150"></canvas>
+        </div>
+
+        <details class="card card-comm">
+          <summary class="card-title clickable"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> Printer Communication</summary>
+          <div class="stats-grid">
+            <div class="stat"><span class="stat-label">State</span><span class="stat-value" id="comm-state">--</span></div>
+            <div class="stat"><span class="stat-label">Latency</span><span class="stat-value" id="comm-latency">-- ms</span></div>
+            <div class="stat"><span class="stat-label">TX Cmds</span><span class="stat-value" id="comm-tx">0</span></div>
+            <div class="stat"><span class="stat-label">RX Bytes</span><span class="stat-value" id="comm-rx">0</span></div>
+            <div class="stat"><span class="stat-label">Errors</span><span class="stat-value" id="comm-errors">0</span></div>
+            <div class="stat"><span class="stat-label">Timeouts</span><span class="stat-value" id="comm-timeouts">0</span></div>
+          </div>
+        </details>
+      </section>
+
+      <section id="tab-control" class="tab-content">
+        <div class="card">
+          <div class="card-title"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/></svg> Hotend</div>
+          <div class="temp-row">
+            <input type="number" id="ctrl-hotend-temp" min="0" max="260" value="0" />
+            <span class="unit">&deg;C</span>
+            <button id="btn-set-hotend">Set</button>
+            <button id="btn-off-hotend" class="btn-danger">Off</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/></svg> Bed</div>
+          <div class="temp-row">
+            <input type="number" id="ctrl-bed-temp" min="0" max="110" value="0" />
+            <span class="unit">&deg;C</span>
+            <button id="btn-set-bed">Set</button>
+            <button id="btn-off-bed" class="btn-danger">Off</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 9l-3 3 3 3"/><path d="M9 5l3-3 3 3"/><path d="M15 19l-3 3-3-3"/><path d="M19 9l3 3-3 3"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg> Movement</div>
+          <div class="jog-container">
+            <div class="jog-pad">
+              <button class="jog-btn jog-up" data-axis="Y" data-dir="1">Y+</button>
+              <button class="jog-btn jog-left" data-axis="X" data-dir="-1">X-</button>
+              <button class="jog-btn jog-center" id="btn-home-jog">H</button>
+              <button class="jog-btn jog-right" data-axis="X" data-dir="1">X+</button>
+              <button class="jog-btn jog-down" data-axis="Y" data-dir="-1">Y-</button>
+            </div>
+            <div class="jog-z">
+              <button class="jog-btn jog-z-up" data-axis="Z" data-dir="1">Z+</button>
+              <button class="jog-btn jog-z-down" data-axis="Z" data-dir="-1">Z-</button>
+            </div>
+          </div>
+          <div class="step-selector">
+            <span class="step-label">Step:</span>
+            <button class="btn-step" data-step="0.1">0.1</button>
+            <button class="btn-step" data-step="1">1</button>
+            <button class="btn-step active" data-step="10">10</button>
+            <button class="btn-step" data-step="50">50</button>
+            <span class="step-unit">mm</span>
+          </div>
+        </div>
+
+        <div class="card" id="card-files">
+          <div class="card-title"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> SD Card Files</div>
+          <div class="file-header" style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
+            <button id="btn-refresh-files" class="btn-sm">Refresh</button>
+          </div>
+          <div id="file-list-container">
+            <div class="file-empty">Connect to load SD files</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg> Actions</div>
+          <div class="action-grid">
+            <button id="btn-pause" class="btn-action">Pause</button>
+            <button id="btn-resume" class="btn-action">Resume</button>
+            <button id="btn-cancel" class="btn-action btn-danger">Cancel</button>
+          </div>
+          <button id="btn-estop" class="btn-emergency">EMERGENCY STOP</button>
+        </div>
+      </section>
+
+      <section id="tab-console" class="tab-content">
+        <div class="console-warning">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <span>Only send G-code commands you understand. Wrong commands can damage the printer.</span>
+        </div>
+        <div class="card console-card">
+          <div class="console-header">
+            <div class="card-title"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg> G-code Console</div>
+            <div class="console-actions">
+              <label class="toggle-label">
+                <input type="checkbox" id="console-autoscroll" checked />
+                Auto-scroll
+              </label>
+              <button id="btn-console-clear" class="btn-sm">Clear</button>
+            </div>
+          </div>
+          <div id="console-log" class="console-log"></div>
+          <div class="console-input-row">
+            <input type="text" id="gcode-input" placeholder="Enter G-code (e.g. M105)" autocomplete="off" />
+            <button id="btn-send-gcode">Send</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-settings" class="tab-content">
+        <div class="card">
+          <div class="card-title"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Polling Interval</div>
+          <div class="slider-row">
+            <input type="range" id="cfg-polling" min="250" max="5000" step="50" value="500" class="slider" />
+            <span class="slider-value" id="polling-value">500ms</span>
+          </div>
+          <div id="polling-warning" class="warning-badge" style="display: none;">Low interval may cause instability</div>
+          <button id="btn-save-polling" class="btn-sm" style="margin-top: 10px;">Apply</button>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Chart Duration</div>
+          <div class="radio-group">
+            <label class="radio-label"><input type="radio" name="chart-duration" value="120" /> 2 min</label>
+            <label class="radio-label"><input type="radio" name="chart-duration" value="300" checked /> 5 min</label>
+            <label class="radio-label"><input type="radio" name="chart-duration" value="600" /> 10 min</label>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1"/></svg> Connection</div>
+          <div class="settings-info">
+            <div class="info-row"><span class="info-label">IP Address</span><span class="info-value" id="cfg-ip">--</span></div>
+            <div class="info-row"><span class="info-label">WebSocket</span><span class="info-value" id="cfg-ws-status">--</span></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/><path d="M9 1v3"/><path d="M15 1v3"/><path d="M9 20v3"/><path d="M15 20v3"/><path d="M20 9h3"/><path d="M20 14h3"/><path d="M1 9h3"/><path d="M1 14h3"/></svg> Device Info</div>
+          <div class="settings-info">
+            <div class="info-row"><span class="info-label">Free Heap</span><span class="info-value" id="dev-heap">--</span></div>
+            <div class="info-row"><span class="info-label">Uptime</span><span class="info-value" id="dev-uptime">--</span></div>
+            <div class="info-row"><span class="info-label">WiFi RSSI</span><span class="info-value" id="dev-rssi">--</span></div>
+            <div class="info-row"><span class="info-label">Chip Temp</span><span class="info-value" id="dev-chip-temp">--</span></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 6 1 10 20 14 8 16 14 18 11 21 11"/></svg> Data</div>
+          <button id="btn-clear-history" class="btn-sm btn-danger">Clear Temp History</button>
+        </div>
+      </section>
+    </main>
+
+    <nav id="tab-bar">
+      <button class="tab-btn active" data-tab="monitor">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+        <span>Monitor</span>
+      </button>
+      <button class="tab-btn" data-tab="control">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6m-7-7h6m6 0h6"/></svg>
+        <span>Control</span>
+      </button>
+      <button class="tab-btn" data-tab="console">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+        <span>Console</span>
+      </button>
+      <button class="tab-btn" data-tab="settings">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span>Settings</span>
+      </button>
+    </nav>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

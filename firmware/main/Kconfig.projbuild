@@ -1,0 +1,27 @@
+menu "Marlin WiFi Bridge Configuration"
+
+    config WIFI_MAX_RETRY
+        int "WiFi max reconnect retries"
+        default 10
+        help
+            Maximum number of reconnect attempts before reboot.
+
+    config MARLIN_BAUD_RATE
+        int "Marlin serial baud rate"
+        default 115200
+        help
+            Baud rate for communication with the printer.
+
+    config POLL_TEMP_INTERVAL_MS
+        int "Temperature polling interval (ms)"
+        default 2000
+
+    config POLL_POSITION_INTERVAL_MS
+        int "Position polling interval (ms)"
+        default 3000
+
+    config POLL_PROGRESS_INTERVAL_MS
+        int "Print progress polling interval (ms)"
+        default 5000
+
+endmenu
